@@ -41,7 +41,7 @@
 |------|------|----------|
 | **9-supervisor-agent** | 10008 | 调度中心，根据用户问题路由到对应的子Agent |
 | **1-coffee-shop** | 8080 | MCP Server，提供产品和订单相关工具 |
-| **2-memory-mcp-server** | 8081 | MCP Server，提供用户偏好记忆工具（基于OpenSearch） |
+| **2-memory-mcp-server** | 8081 | MCP Server，提供用户偏好记忆工具（基于mem0+OpenSearch） |
 | **3-consult-sub-agent** | 8082 | 产品咨询、个性化推荐、智能问答 |
 | **4-order-sub-agent** | 8083 | 订单查询、下单、订单状态跟踪 |
 | **5-feedback-sub-agent** | 8084 | 用户反馈收集、满意度分析、情绪管理 |
@@ -267,7 +267,7 @@ if (toolName.startsWith("consult") || toolName.startsWith("memory")) {
 
 需要在Opeansearch里提前创建index：coffeeshop，并上传.\3-consult-sub-agent\src\main\resources\knowledge里的文件
 
-mem0 配置参考 
+mem0 下载及配置参考 
 https://docs.mem0.ai/open-source/overview
 
 推荐使用Nacos实现A2A 模式
