@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.UserPreferenceMapper">
+
+    <resultMap id="UserPreferenceResultMap" type="com.example.entity.UserPreference">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="preferredSweetness" column="preferred_sweetness"/>
+        <result property="preferredIceLevel" column="preferred_ice_level"/>
+        <result property="preferredDrinkType" column="preferred_drink_type"/>
+        <result property="preferredStrength" column="preferred_strength"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="selectByUserId" resultMap="UserPreferenceResultMap">
+        SELECT * FROM user_preference WHERE user_id = #{userId}
+    </select>
+
+    <select id="selectAll" resultMap="UserPreferenceResultMap">
+        SELECT * FROM user_preference ORDER BY created_at DESC
+    </select>
+
+    <insert id="insert" parameterType="com.example.entity.UserPreference" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_preference (user_id, preferred_sweetness, preferred_ice_level, preferred_drink_type, preferred_strength, created_at, updated_at)
+        VALUES (#{userId}, #{preferredSweetness}, #{preferredIceLevel}, #{preferredDrinkType}, #{preferredStrength}, NOW(), NOW())
+    </insert>
+
+    <update id="update" parameterType="com.example.entity.UserPreference">
+        UPDATE user_preference
+        <set>
+            <if test="preferredSweetness != null">preferred_sweetness = #{preferredSweetness},</if>
+            <if test="preferredIceLevel != null">preferred_ice_level = #{preferredIceLevel},</if>
+            <if test="preferredDrinkType != null">preferred_drink_type = #{preferredDrinkType},</if>
+            <if test="preferredStrength != null">preferred_strength = #{preferredStrength},</if>
+            updated_at = NOW()
+        </set>
+        WHERE user_id = #{userId}
+    </update>
+
+    <delete id="deleteByUserId">
+        DELETE FROM user_preference WHERE user_id = #{userId}
+    </delete>
+
+</mapper>

@@ -1,0 +1,19 @@
+{
+  "name": "coffee-shop-frontend",
+  "version": "1.0.0",
+  "description": "Coffee Shop Frontend",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.3.8",
+    "axios": "^1.6.2",
+    "element-plus": "^2.4.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.5.0",
+    "vite": "^5.0.4"
+  }
+}

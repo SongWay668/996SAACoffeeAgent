@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.OrderMapper">
+
+    <resultMap id="OrderResultMap" type="com.example.entity.Order">
+        <id property="id" column="id"/>
+        <result property="orderId" column="order_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="productId" column="product_id"/>
+        <result property="productName" column="product_name"/>
+        <result property="sweetness" column="sweetness"/>
+        <result property="sweetnessName" column="sweetness_name"/>
+        <result property="iceLevel" column="ice_level"/>
+        <result property="iceLevelName" column="ice_level_name"/>
+        <result property="quantity" column="quantity"/>
+        <result property="unitPrice" column="unit_price"/>
+        <result property="totalPrice" column="total_price"/>
+        <result property="remark" column="remark"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="OrderResultMap">
+        SELECT o.*,
+               r_sweet.ref_value as sweetness_name,
+               r_ice.ref_value as ice_level_name
+        FROM `order` o
+        LEFT JOIN reference r_sweet ON r_sweet.ref_type = 'sweetness' AND r_sweet.ref_code = o.sweetness
+        LEFT JOIN reference r_ice ON r_ice.ref_type = 'ice_level' AND r_ice.ref_code = o.ice_level
+        WHERE o.id = #{id}
+    </select>
+
+    <select id="selectByOrderId" resultMap="OrderResultMap">
+        SELECT o.*,
+               r_sweet.ref_value as sweetness_name,
+               r_ice.ref_value as ice_level_name
+        FROM `order` o
+        LEFT JOIN reference r_sweet ON r_sweet.ref_type = 'sweetness' AND r_sweet.ref_code = o.sweetness
+        LEFT JOIN reference r_ice ON r_ice.ref_type = 'ice_level' AND r_ice.ref_code = o.ice_level
+        WHERE o.order_id = #{orderId}
+    </select>
+
+    <select id="selectAll" resultMap="OrderResultMap">
+        SELECT o.*,
+               r_sweet.ref_value as sweetness_name,
+               r_ice.ref_value as ice_level_name
+        FROM `order` o
+        LEFT JOIN reference r_sweet ON r_sweet.ref_type = 'sweetness' AND r_sweet.ref_code = o.sweetness
+        LEFT JOIN reference r_ice ON r_ice.ref_type = 'ice_level' AND r_ice.ref_code = o.ice_level
+        ORDER BY o.created_at DESC
+    </select>
+
+    <select id="selectByUserId" resultMap="OrderResultMap">
+        SELECT o.*,
+               r_sweet.ref_value as sweetness_name,
+               r_ice.ref_value as ice_level_name
+        FROM `order` o
+        LEFT JOIN reference r_sweet ON r_sweet.ref_type = 'sweetness' AND r_sweet.ref_code = o.sweetness
+        LEFT JOIN reference r_ice ON r_ice.ref_type = 'ice_level' AND r_ice.ref_code = o.ice_level
+        WHERE o.user_id = #{userId}
+        ORDER BY o.created_at DESC
+    </select>
+
+    <select id="selectByUserIdAndOrderId" resultMap="OrderResultMap">
+        SELECT o.*,
+               r_sweet.ref_value as sweetness_name,
+               r_ice.ref_value as ice_level_name
+        FROM `order` o
+        LEFT JOIN reference r_sweet ON r_sweet.ref_type = 'sweetness' AND r_sweet.ref_code = o.sweetness
+        LEFT JOIN reference r_ice ON r_ice.ref_type = 'ice_level' AND r_ice.ref_code = o.ice_level
+        WHERE o.user_id = #{userId} AND o.order_id = #{orderId}
+    </select>
+
+    <select id="selectByConditions" resultMap="OrderResultMap">
+        SELECT o.*,
+               r_sweet.ref_value as sweetness_name,
+               r_ice.ref_value as ice_level_name
+        FROM `order` o
+        LEFT JOIN reference r_sweet ON r_sweet.ref_type = 'sweetness' AND r_sweet.ref_code = o.sweetness
+        LEFT JOIN reference r_ice ON r_ice.ref_type = 'ice_level' AND r_ice.ref_code = o.ice_level
+        <where>
+            o.user_id = #{userId}
+            <if test="productName != null and productName != ''">
+                AND o.product_name LIKE CONCAT('%', #{productName}, '%')
+            </if>
+            <if test="sweetness != null">
+                AND o.sweetness = #{sweetness}
+            </if>
+            <if test="iceLevel != null">
+                AND o.ice_level = #{iceLevel}
+            </if>
+            <if test="startTime != null and startTime != ''">
+                AND o.created_at >= #{startTime}
+            </if>
+            <if test="endTime != null and endTime != ''">
+                AND o.created_at &lt;= #{endTime}
+            </if>
+        </where>
+        ORDER BY o.created_at DESC
+    </select>
+
+    <insert id="insert" parameterType="com.example.entity.Order" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `order` (order_id, user_id, product_id, product_name, sweetness, ice_level, quantity, unit_price, total_price, remark, created_at, updated_at)
+        VALUES (#{orderId}, #{userId}, #{productId}, #{productName}, #{sweetness}, #{iceLevel}, #{quantity}, #{unitPrice}, #{totalPrice}, #{remark}, NOW(), NOW())
+    </insert>
+
+    <update id="update" parameterType="com.example.entity.Order">
+        UPDATE `order`
+        <set>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="productId != null">product_id = #{productId},</if>
+            <if test="productName != null">product_name = #{productName},</if>
+            <if test="sweetness != null">sweetness = #{sweetness},</if>
+            <if test="iceLevel != null">ice_level = #{iceLevel},</if>
+            <if test="quantity != null">quantity = #{quantity},</if>
+            <if test="unitPrice != null">unit_price = #{unitPrice},</if>
+            <if test="totalPrice != null">total_price = #{totalPrice},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            updated_at = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateRemark">
+        UPDATE `order` SET remark = #{remark}, updated_at = NOW() WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM `order` WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteByUserIdAndOrderId">
+        DELETE FROM `order` WHERE user_id = #{userId} AND order_id = #{orderId}
+    </delete>
+
+</mapper>

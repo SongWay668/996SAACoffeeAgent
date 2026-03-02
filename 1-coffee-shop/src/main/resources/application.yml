@@ -1,0 +1,76 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: coffee-shop
+  security:
+    user:
+      name: admin
+      password: admin123
+  ai:
+    mcp:
+      server:
+        protocol: STREAMABLE
+        #        protocol: SSE
+        name: mcp_common
+        version: 1.0.0
+        type: SYNC
+        instructions: "This streamable server provides real-time notifications"
+        resource-change-notification: true
+        tool-change-notification: true
+        prompt-change-notification: true
+        streamable-http:
+          endpoint: /mcp  # 默认就是 /mcp
+          keep-alive-interval: 30s
+
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/coffee_shop?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: ${DBKEY}
+    druid:
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+      max-wait: 60000
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      validation-query: SELECT 1
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      pool-prepared-statements: true
+      max-pool-prepared-statement-per-connection-size: 20
+      filters: stat,wall,slf4j
+
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.example.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: true
+    lazy-loading-enabled: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+logging:
+  level:
+    com.example.mapper: debug
+    org.springframework.ai: debug
+    com.example: debug
+    io.modelcontextprotocol.util.KeepAliveScheduler: error
+  file:
+    name: E:/learningspace/java/JavaProjects/996SAACoffeeAgent/1-coffee-shop/logs/coffee-shop.log
+    max-size: 100MB
+    max-history: 30
+    total-size-cap: 1GB
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+mcp:
+  security:
+    enabled: false
+    token: 93561  # 生产环境请修改此 Token

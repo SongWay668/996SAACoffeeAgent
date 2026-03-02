@@ -1,0 +1,106 @@
+server:
+  port: 10008
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  profiles:
+    include:
+     - consult
+     - order
+     - feedback
+  application:
+    name: supervisor-agent
+  ai:
+    mcp:
+      client:
+        enabled: true
+        name: supervisor-mcp-client
+        version: 1.0.0
+        request-timeout: 30s
+        type: SYNC
+        streamable-http:
+          connections:
+            coffee-shop-server:
+              url: http://localhost:8080
+              endpoint: /mcp
+              headers:
+                Authorization: "Bearer mcp-secure-token-change-me-in-production"
+            memory-server:
+              url: http://localhost:8081
+              endpoint: /mcp
+              headers:
+                Authorization: "Bearer mcp-secure-token-change-me-in-production"
+        toolcallback:
+          enabled: true
+    dashscope:
+      api-key: ${API-KEY}
+      chat:
+        options:
+          model: qwen-plus
+      embedding:
+        options:
+          model: text-embedding-v3
+          dimensions: 1024
+    vectorstore:
+      opensearch:
+        uris: http://localhost:9200
+        username: admin
+        password: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+        initialize-schema: false
+        similarity-function: cosinesimil
+        similarity-threshold: 0.1
+        index-name: coffeeshop
+        dimensions: 1024
+
+agent:
+  mode: supervisor
+#    mcp:
+#      client:
+#        enabled: true  # 是否启用MCP
+#        name: consult-agent-mcp-client # MCP 客户端名称
+#        version: 1.0.0
+#        request-timeout: 30s
+#        type: SYNC #和server一致
+#        streamable-http:
+#          connections:
+#            server1:
+#              url: http://localhost:8080
+#              endpoint: /mcp #和server一致
+#              headers:
+#                Authorization: "Bearer mcp-secure-token-change-me-in-production"
+#            server2:
+#              url: http://localhost:8081
+#              endpoint: /mcp #和server一致
+#              headers:
+#                Authorization: "Bearer mcp-secure-token-change-me-in-production"
+#        toolcallback:
+#          enabled: true #工具调用结果会被回调处理 （可能过滤、格式化
+
+logging:
+  level:
+    io.modelcontextprotocol.client.KeepAliveScheduler: error
+    com.alibaba.cloud.ai.dashscope: debug  # 调试日志
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%logger{36}] - %msg%n"
+#    alibaba:
+#      a2a:
+#        nacos:
+#          server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+#          username: ${NACOS_USERNAME:nacos}
+#          password: ${NACOS_PASSWORD:nacos}
+#          discovery:
+#            enabled: true  # 启用 discovery，用于发现其他 A2A server
+
+# MyBatis配置
+#mybatis:
+#  mapper-locations: classpath:mapper/*.xml
+#  type-aliases-package: com.alibaba.cloud.ai.demo.entity
+#  configuration:
+#    map-underscore-to-camel-case: true
+#    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# XXL-JOB任务调度配置

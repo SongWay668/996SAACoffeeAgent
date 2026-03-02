@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 测试工具</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { margin-bottom: 20px; color: #333; }
+        h2 { margin-bottom: 15px; color: #666; font-size: 18px; }
+        button { padding: 10px 20px; margin: 5px; background: #1890ff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #40a9ff; }
+        .response { background: #f5f5f5; padding: 15px; border-radius: 4px; margin-top: 10px; font-family: monospace; white-space: pre-wrap; word-break: break-all; }
+        .success { border-left: 4px solid #52c41a; }
+        .error { border-left: 4px solid #ff4d4f; }
+        .loading { display: inline-block; width: 20px; height: 20px; border: 2px solid #f3f3f3; border-top: 2px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin-left: 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🔧 API 测试工具</h1>
+            <p>用于调试后端 API 接口</p>
+        </div>
+
+        <div class="card">
+            <h2>1. 获取所有用户</h2>
+            <button onclick="testGetUsers()">测试 GET /api/users</button>
+            <div id="response-users" class="response"></div>
+        </div>
+
+        <div class="card">
+            <h2>2. 创建用户</h2>
+            <button onclick="testCreateUser()">测试 POST /api/users</button>
+            <div id="response-create-user" class="response"></div>
+        </div>
+
+        <div class="card">
+            <h2>3. 获取所有产品</h2>
+            <button onclick="testGetProducts()">测试 GET /api/products</button>
+            <div id="response-products" class="response"></div>
+        </div>
+
+        <div class="card">
+            <h2>4. 创建产品</h2>
+            <button onclick="testCreateProduct()">测试 POST /api/products</button>
+            <div id="response-create-product" class="response"></div>
+        </div>
+
+        <div class="card">
+            <h2>5. 获取所有订单</h2>
+            <button onclick="testGetOrders()">测试 GET /api/orders</button>
+            <div id="response-orders" class="response"></div>
+        </div>
+
+        <div class="card">
+            <h2>6. 获取所有反馈</h2>
+            <button onclick="testGetFeedback()">测试 GET /api/feedback</button>
+            <div id="response-feedback" class="response"></div>
+        </div>
+
+        <div class="card">
+            <h2>❓ 故障排查</h2>
+            <p>如果测试失败，请检查：</p>
+            <ul style="margin-left: 20px; line-height: 2;">
+                <li>✓ 后端是否启动（访问 http://localhost:8080）</li>
+                <li>✓ MySQL 数据库是否运行</li>
+                <li>✓ 数据库表是否存在</li>
+                <li>✓ 浏览器控制台是否有错误（F12）</li>
+                <li>✓ 网络请求是否成功（F12 -> Network 标签）</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        async function testGetUsers() {
+            const el = document.getElementById('response-users');
+            el.innerHTML = '<span class="loading"></span>';
+            try {
+                const res = await fetch('/api/users');
+                const data = await res.json();
+                el.innerHTML = `状态: ${res.status} ${res.statusText}\n\n${JSON.stringify(data, null, 2)}`;
+                el.className = 'response success';
+            } catch (e) {
+                el.innerHTML = `错误: ${e.message}`;
+                el.className = 'response error';
+            }
+        }
+
+        async function testCreateUser() {
+            const el = document.getElementById('response-create-user');
+            el.innerHTML = '<span class="loading"></span>';
+            try {
+                const res = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: 'test_user',
+                        email: 'test@example.com',
+                        phone: '13800000000',
+                        role: 'CUSTOMER'
+                    })
+                });
+                const data = await res.json();
+                el.innerHTML = `状态: ${res.status} ${res.statusText}\n\n${JSON.stringify(data, null, 2)}`;
+                el.className = res.ok ? 'response success' : 'response error';
+            } catch (e) {
+                el.innerHTML = `错误: ${e.message}`;
+                el.className = 'response error';
+            }
+        }
+
+        async function testGetProducts() {
+            const el = document.getElementById('response-products');
+            el.innerHTML = '<span class="loading"></span>';
+            try {
+                const res = await fetch('/api/products');
+                const data = await res.json();
+                el.innerHTML = `状态: ${res.status} ${res.statusText}\n\n${JSON.stringify(data, null, 2)}`;
+                el.className = 'response success';
+            } catch (e) {
+                el.innerHTML = `错误: ${e.message}`;
+                el.className = 'response error';
+            }
+        }
+
+        async function testCreateProduct() {
+            const el = document.getElementById('response-create-product');
+            el.innerHTML = '<span class="loading"></span>';
+            try {
+                const res = await fetch('/api/products', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: '测试咖啡',
+                        category: '咖啡',
+                        price: 25.00,
+                        stock: 100
+                    })
+                });
+                const data = await res.json();
+                el.innerHTML = `状态: ${res.status} ${res.statusText}\n\n${JSON.stringify(data, null, 2)}`;
+                el.className = res.ok ? 'response success' : 'response error';
+            } catch (e) {
+                el.innerHTML = `错误: ${e.message}`;
+                el.className = 'response error';
+            }
+        }
+
+        async function testGetOrders() {
+            const el = document.getElementById('response-orders');
+            el.innerHTML = '<span class="loading"></span>';
+            try {
+                const res = await fetch('/api/orders');
+                const data = await res.json();
+                el.innerHTML = `状态: ${res.status} ${res.statusText}\n\n${JSON.stringify(data, null, 2)}`;
+                el.className = 'response success';
+            } catch (e) {
+                el.innerHTML = `错误: ${e.message}`;
+                el.className = 'response error';
+            }
+        }
+
+        async function testGetFeedback() {
+            const el = document.getElementById('response-feedback');
+            el.innerHTML = '<span class="loading"></span>';
+            try {
+                const res = await fetch('/api/feedback');
+                const data = await res.json();
+                el.innerHTML = `状态: ${res.status} ${res.statusText}\n\n${JSON.stringify(data, null, 2)}`;
+                el.className = 'response success';
+            } catch (e) {
+                el.innerHTML = `错误: ${e.message}`;
+                el.className = 'response error';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.ReferenceMapper">
+
+    <resultMap id="ReferenceResultMap" type="com.example.entity.Reference">
+        <id property="id" column="id"/>
+        <result property="refType" column="ref_type"/>
+        <result property="refKey" column="ref_key"/>
+        <result property="refValue" column="ref_value"/>
+        <result property="refCode" column="ref_code"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="isActive" column="is_active"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="selectByRefType" resultMap="ReferenceResultMap">
+        SELECT * FROM reference WHERE ref_type = #{refType} AND is_active = 1 ORDER BY sort_order
+    </select>
+
+    <select id="selectAll" resultMap="ReferenceResultMap">
+        SELECT * FROM reference ORDER BY ref_type, sort_order
+    </select>
+
+    <select id="selectRefValue" resultType="java.lang.String">
+        SELECT ref_value FROM reference 
+        WHERE ref_type = #{refType} AND ref_code = #{refCode} AND is_active = 1 
+        LIMIT 1
+    </select>
+
+</mapper>

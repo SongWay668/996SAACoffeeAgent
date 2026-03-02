@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>咖啡店管理系统</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue-router@4/dist/vue-router.global.js"></script>
+    <script src="https://unpkg.com/element-plus/dist/index.full.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
+        }
+        #app {
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .page-title {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .el-table {
+            margin-top: 20px;
+        }
+        .el-pagination {
+            margin-top: 20px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <!-- 路由视图组件 -->
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+        const { createRouter, createWebHistory } = VueRouter;
+
+        // API 基础 URL
+        const API_BASE = '/api';
+
+        // HTTP 请求封装
+        async function request(url, options = {}) {
+            const config = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                ...options
+            };
+
+            if (config.body && typeof config.body === 'object') {
+                config.body = JSON.stringify(config.body);
+            }
+
+            const response = await fetch(API_BASE + url, config);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const result = await response.json();
+            // 如果返回的是标准格式 {code, message, data}，则提取 data
+            if (result && typeof result === 'object' && 'code' in result) {
+                if (result.code === 200) {
+                    return result.data;
+                } else {
+                    throw new Error(result.message || '请求失败');
+                }
+            }
+            return result;
+        }
+
+        // ========== 用户管理组件 ==========
+        const Users = {
+            template: `
+                <div class="container">
+                    <h2 class="page-title">用户管理</h2>
+                    <el-button type="primary" @click="showAddDialog">新增用户</el-button>
+                    <el-table :data="users" style="width: 100%" v-loading="loading">
+                        <el-table-column prop="id" label="ID" width="80" />
+                        <el-table-column prop="username" label="用户名" width="120" />
+                        <el-table-column prop="nickname" label="昵称" width="120" />
+                        <el-table-column prop="email" label="邮箱" width="200" />
+                        <el-table-column prop="phone" label="电话" width="150" />
+                        <el-table-column prop="status" label="状态" width="100">
+                            <template #default="scope">
+                                <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
+                                    {{ scope.row.status === 1 ? '正常' : '禁用' }}
+                                </el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="createdAt" label="创建时间" width="180">
+                            <template #default="scope">
+                                {{ formatDateTime(scope.row.createdAt) }}
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="操作" fixed="right" width="150">
+                            <template #default="scope">
+                                <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
+                                <el-button size="small" type="danger" @click="handleDelete(scope.row)">删除</el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+
+                    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑用户' : '新增用户'" width="500px">
+                        <el-form :model="form" label-width="80px">
+                            <el-form-item label="用户名">
+                                <el-input v-model="form.username" />
+                            </el-form-item>
+                            <el-form-item label="昵称">
+                                <el-input v-model="form.nickname" />
+                            </el-form-item>
+                            <el-form-item label="邮箱">
+                                <el-input v-model="form.email" />
+                            </el-form-item>
+                            <el-form-item label="电话">
+                                <el-input v-model="form.phone" />
+                            </el-form-item>
+                            <el-form-item label="状态">
+                                <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
+                            </el-form-item>
+                        </el-form>
+                        <template #footer>
+                            <el-button @click="dialogVisible = false">取消</el-button>
+                            <el-button type="primary" @click="handleSubmit">确定</el-button>
+                        </template>
+                    </el-dialog>
+                </div>
+            `,
+            setup() {
+                const users = ref([]);
+                const loading = ref(false);
+                const dialogVisible = ref(false);
+                const isEdit = ref(false);
+                const form = ref({});
+
+                const fetchUsers = async () => {
+                    loading.value = true;
+                    try {
+                        const data = await request('/users');
+                        users.value = data;
+                    } catch (error) {
+                        ElementPlus.ElMessage.error('获取用户列表失败');
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const formatDateTime = (dateStr) => {
+                    if (!dateStr) return '';
+                    return new Date(dateStr).toLocaleString('zh-CN');
+                };
+
+                const showAddDialog = () => {
+                    isEdit.value = false;
+                    form.value = { status: 1 };
+                    dialogVisible.value = true;
+                };
+
+                const handleEdit = (row) => {
+                    isEdit.value = true;
+                    form.value = { ...row };
+                    dialogVisible.value = true;
+                };
+
+                const handleDelete = async (row) => {
+                    try {
+                        await ElementPlus.ElMessageBox.confirm('确定要删除该用户吗？', '提示', {
+                            type: 'warning'
+                        });
+                        await request(`/users/${row.id}`, { method: 'DELETE' });
+                        ElementPlus.ElMessage.success('删除成功');
+                        fetchUsers();
+                    } catch (error) {
+                        if (error !== 'cancel') {
+                            ElementPlus.ElMessage.error('删除失败');
+                        }
+                    }
+                };
+
+                const handleSubmit = async () => {
+                    try {
+                        if (isEdit.value) {
+                            await request(`/users/${form.value.id}`, {
+                                method: 'PUT',
+                                body: form.value
+                            });
+                        } else {
+                            await request('/users', {
+                                method: 'POST',
+                                body: form.value
+                            });
+                        }
+                        ElementPlus.ElMessage.success(isEdit.value ? '更新成功' : '新增成功');
+                        dialogVisible.value = false;
+                        fetchUsers();
+                    } catch (error) {
+                        ElementPlus.ElMessage.error(isEdit.value ? '更新失败' : '新增失败');
+                    }
+                };
+
+                onMounted(() => {
+                    fetchUsers();
+                });
+
+                return { users, loading, dialogVisible, isEdit, form, showAddDialog, handleEdit, handleDelete, handleSubmit, formatDateTime };
+            }
+        };
+
+        // ========== 产品管理组件 ==========
+        const Products = {
+            template: `
+                <div class="container">
+                    <h2 class="page-title">产品管理</h2>
+                    <el-button type="primary" @click="showAddDialog">新增产品</el-button>
+                    <el-table :data="products" style="width: 100%" v-loading="loading">
+                        <el-table-column prop="id" label="ID" width="60" />
+                        <el-table-column prop="name" label="产品名称" width="150" />
+                        <el-table-column prop="description" label="描述" width="200" show-overflow-tooltip />
+                        <el-table-column prop="price" label="价格" width="80" />
+                        <el-table-column prop="stock" label="库存" width="80" />
+                        <el-table-column prop="preparationTime" label="制作时间(分钟)" width="120" />
+                        <el-table-column prop="status" label="状态" width="80">
+                            <template #default="scope">
+                                <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
+                                    {{ scope.row.status === 1 ? '上架' : '下架' }}
+                                </el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="isSeasonal" label="季节限定" width="90">
+                            <template #default="scope">
+                                <el-tag :type="scope.row.isSeasonal === 1 ? 'warning' : 'info'">
+                                    {{ scope.row.isSeasonal === 1 ? '是' : '否' }}
+                                </el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="createdAt" label="创建时间" width="150">
+                            <template #default="scope">
+                                {{ formatDateTime(scope.row.createdAt) }}
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="操作" width="150" fixed="right">
+                            <template #default="scope">
+                                <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
+                                <el-button size="small" type="danger" @click="handleDelete(scope.row)">删除</el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+
+                    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑产品' : '新增产品'" width="600px">
+                        <el-form :model="form" label-width="100px">
+                            <el-form-item label="产品名称">
+                                <el-input v-model="form.name" placeholder="请输入产品名称" />
+                            </el-form-item>
+                            <el-form-item label="产品描述">
+                                <el-input v-model="form.description" type="textarea" :rows="2" placeholder="请输入产品描述" />
+                            </el-form-item>
+                            <el-form-item label="价格">
+                                <el-input-number v-model="form.price" :min="0" :step="0.01" :precision="2" />
+                            </el-form-item>
+                            <el-form-item label="库存">
+                                <el-input-number v-model="form.stock" :min="0" />
+                            </el-form-item>
+                            <el-form-item label="保质期(天)">
+                                <el-input-number v-model="form.shelfTime" :min="0" />
+                            </el-form-item>
+                            <el-form-item label="制作时间(分钟)">
+                                <el-input-number v-model="form.preparationTime" :min="0" />
+                            </el-form-item>
+                            <el-form-item label="季节限定">
+                                <el-switch v-model="form.isSeasonal" :active-value="1" :inactive-value="0" />
+                            </el-form-item>
+                            <el-form-item label="季节开始日期" v-if="form.isSeasonal === 1">
+                                <el-date-picker v-model="form.seasonStart" type="date" value-format="YYYY-MM-DD" />
+                            </el-form-item>
+                            <el-form-item label="季节结束日期" v-if="form.isSeasonal === 1">
+                                <el-date-picker v-model="form.seasonEnd" type="date" value-format="YYYY-MM-DD" />
+                            </el-form-item>
+                            <el-form-item label="区域限定">
+                                <el-switch v-model="form.isRegional" :active-value="1" :inactive-value="0" />
+                            </el-form-item>
+                            <el-form-item label="可用区域" v-if="form.isRegional === 1">
+                                <el-input v-model="form.availableRegions" placeholder="如：华南地区" />
+                            </el-form-item>
+                            <el-form-item label="状态">
+                                <el-radio-group v-model="form.status">
+                                    <el-radio :value="1">上架</el-radio>
+                                    <el-radio :value="0">下架</el-radio>
+                                </el-radio-group>
+                            </el-form-item>
+                        </el-form>
+                        <template #footer>
+                            <el-button @click="dialogVisible = false">取消</el-button>
+                            <el-button type="primary" @click="handleSubmit">确定</el-button>
+                        </template>
+                    </el-dialog>
+                </div>
+            `,
+            setup() {
+                const products = ref([]);
+                const loading = ref(false);
+                const dialogVisible = ref(false);
+                const isEdit = ref(false);
+                const form = ref({});
+
+                const fetchProducts = async () => {
+                    loading.value = true;
+                    try {
+                        const data = await request('/products');
+                        products.value = data;
+                    } catch (error) {
+                        ElementPlus.ElMessage.error('获取产品列表失败');
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const showAddDialog = () => {
+                    isEdit.value = false;
+                    form.value = {
+                        price: 0,
+                        stock: 0,
+                        shelfTime: 90,
+                        preparationTime: 5,
+                        isSeasonal: 0,
+                        isRegional: 0,
+                        status: 1
+                    };
+                    dialogVisible.value = true;
+                };
+
+                const formatDateTime = (dateStr) => {
+                    if (!dateStr) return '';
+                    return new Date(dateStr).toLocaleString('zh-CN');
+                };
+
+                const handleEdit = (row) => {
+                    isEdit.value = true;
+                    form.value = { ...row };
+                    dialogVisible.value = true;
+                };
+
+                const handleDelete = async (row) => {
+                    try {
+                        await ElementPlus.ElMessageBox.confirm('确定要删除该产品吗？', '提示', {
+                            type: 'warning'
+                        });
+                        await request(`/products/${row.id}`, { method: 'DELETE' });
+                        ElementPlus.ElMessage.success('删除成功');
+                        fetchProducts();
+                    } catch (error) {
+                        if (error !== 'cancel') {
+                            ElementPlus.ElMessage.error('删除失败');
+                        }
+                    }
+                };
+
+                const handleSubmit = async () => {
+                    try {
+                        if (isEdit.value) {
+                            await request(`/products/${form.value.id}`, {
+                                method: 'PUT',
+                                body: form.value
+                            });
+                        } else {
+                            await request('/products', {
+                                method: 'POST',
+                                body: form.value
+                            });
+                        }
+                        ElementPlus.ElMessage.success(isEdit.value ? '更新成功' : '新增成功');
+                        dialogVisible.value = false;
+                        fetchProducts();
+                    } catch (error) {
+                        ElementPlus.ElMessage.error(isEdit.value ? '更新失败' : '新增失败');
+                    }
+                };
+
+                onMounted(() => {
+                    fetchProducts();
+                });
+
+                return { products, loading, dialogVisible, isEdit, form, showAddDialog, handleEdit, handleDelete, handleSubmit, formatDateTime };
+            }
+        };
+
+        // ========== 订单管理组件 ==========
+        const Orders = {
+            template: `
+                <div class="container">
+                    <h2 class="page-title">订单管理</h2>
+                    <el-button type="primary" @click="showAddDialog">新增订单</el-button>
+                    <el-table :data="orders" style="width: 100%" v-loading="loading">
+                        <el-table-column prop="id" label="ID" width="80" />
+                        <el-table-column prop="orderId" label="订单号" width="150" />
+                        <el-table-column prop="userId" label="用户ID" width="100" />
+                        <el-table-column prop="productName" label="产品名称" width="150" />
+                        <el-table-column prop="quantity" label="数量" width="80" />
+                        <el-table-column prop="unitPrice" label="单价" width="100" />
+                        <el-table-column prop="totalPrice" label="总价" width="100" />
+                        <el-table-column prop="sweetnessName" label="甜度" width="100" />
+                        <el-table-column prop="iceLevelName" label="冰度" width="100" />
+                        <el-table-column prop="remark" label="备注" width="150" />
+                        <el-table-column prop="createdAt" label="创建时间" width="180">
+                            <template #default="scope">
+                                {{ formatDateTime(scope.row.createdAt) }}
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="操作" width="150" fixed="right">
+                            <template #default="scope">
+                                <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
+                                <el-button size="small" type="danger" @click="handleDelete(scope.row)">删除</el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+
+                    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑订单' : '新增订单'" width="600px">
+                        <el-form :model="form" label-width="100px">
+                            <el-form-item label="订单号">
+                                <el-input v-model="form.orderId" placeholder="如：ORD-001" />
+                            </el-form-item>
+                            <el-form-item label="用户ID">
+                                <el-input-number v-model="form.userId" :min="1" />
+                            </el-form-item>
+                            <el-form-item label="产品ID">
+                                <el-input-number v-model="form.productId" :min="1" />
+                            </el-form-item>
+                            <el-form-item label="产品名称">
+                                <el-input v-model="form.productName" />
+                            </el-form-item>
+                            <el-form-item label="甜度">
+                                <el-select v-model="form.sweetness" placeholder="请选择甜度">
+                                    <el-option
+                                        v-for="item in sweetnessOptions"
+                                        :key="item.refCode"
+                                        :label="item.refValue"
+                                        :value="item.refCode"
+                                    />
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item label="冰度">
+                                <el-select v-model="form.iceLevel" placeholder="请选择冰度">
+                                    <el-option
+                                        v-for="item in iceLevelOptions"
+                                        :key="item.refCode"
+                                        :label="item.refValue"
+                                        :value="item.refCode"
+                                    />
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item label="数量">
+                                <el-input-number v-model="form.quantity" :min="1" />
+                            </el-form-item>
+                            <el-form-item label="单价">
+                                <el-input-number v-model="form.unitPrice" :min="0" :step="0.01" :precision="2" />
+                            </el-form-item>
+                            <el-form-item label="总价">
+                                <el-input-number v-model="form.totalPrice" :min="0" :step="0.01" :precision="2" />
+                            </el-form-item>
+                            <el-form-item label="备注">
+                                <el-input v-model="form.remark" type="textarea" :rows="2" />
+                            </el-form-item>
+                        </el-form>
+                        <template #footer>
+                            <el-button @click="dialogVisible = false">取消</el-button>
+                            <el-button type="primary" @click="handleSubmit">确定</el-button>
+                        </template>
+                    </el-dialog>
+                </div>
+            `,
+            setup() {
+                const orders = ref([]);
+                const loading = ref(false);
+                const dialogVisible = ref(false);
+                const isEdit = ref(false);
+                const form = ref({});
+                const sweetnessOptions = ref([]);
+                const iceLevelOptions = ref([]);
+
+                const fetchOrders = async () => {
+                    loading.value = true;
+                    try {
+                        const data = await request('/orders');
+                        orders.value = data;
+                    } catch (error) {
+                        ElementPlus.ElMessage.error('获取订单列表失败');
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                // 获取甜度选项（仅用于编辑对话框）
+                const fetchSweetnessOptions = async () => {
+                    try {
+                        const data = await request('/reference/type/sweetness');
+                        sweetnessOptions.value = data;
+                    } catch (error) {
+                        console.error('获取甜度选项失败', error);
+                    }
+                };
+
+                // 获取冰度选项（仅用于编辑对话框）
+                const fetchIceLevelOptions = async () => {
+                    try {
+                        const data = await request('/reference/type/ice_level');
+                        iceLevelOptions.value = data;
+                    } catch (error) {
+                        console.error('获取冰度选项失败', error);
+                    }
+                };
+
+                const formatDateTime = (dateStr) => {
+                    if (!dateStr) return '';
+                    return new Date(dateStr).toLocaleString('zh-CN');
+                };
+
+                const showAddDialog = () => {
+                    isEdit.value = false;
+                    form.value = {
+                        orderId: 'ORD-' + Date.now(),
+                        sweetness: 3,
+                        iceLevel: 5,
+                        quantity: 1,
+                        unitPrice: 0,
+                        totalPrice: 0
+                    };
+                    dialogVisible.value = true;
+                };
+
+                const handleEdit = (row) => {
+                    isEdit.value = true;
+                    form.value = { ...row };
+                    dialogVisible.value = true;
+                };
+
+                const handleDelete = async (row) => {
+                    try {
+                        await ElementPlus.ElMessageBox.confirm('确定要删除该订单吗？', '提示', {
+                            type: 'warning'
+                        });
+                        await request(`/orders/${row.id}`, { method: 'DELETE' });
+                        ElementPlus.ElMessage.success('删除成功');
+                        fetchOrders();
+                    } catch (error) {
+                        if (error !== 'cancel') {
+                            ElementPlus.ElMessage.error('删除失败');
+                        }
+                    }
+                };
+
+                const handleSubmit = async () => {
+                    try {
+                        if (isEdit.value) {
+                            await request(`/orders/${form.value.id}`, {
+                                method: 'PUT',
+                                body: form.value
+                            });
+                        } else {
+                            await request('/orders', {
+                                method: 'POST',
+                                body: form.value
+                            });
+                        }
+                        ElementPlus.ElMessage.success(isEdit.value ? '更新成功' : '新增成功');
+                        dialogVisible.value = false;
+                        fetchOrders();
+                    } catch (error) {
+                        ElementPlus.ElMessage.error(isEdit.value ? '更新失败' : '新增失败');
+                    }
+                };
+
+                onMounted(() => {
+                    fetchSweetnessOptions();
+                    fetchIceLevelOptions();
+                    fetchOrders();
+                });
+
+                return { orders, loading, dialogVisible, isEdit, form, sweetnessOptions, iceLevelOptions, showAddDialog, handleEdit, handleDelete, handleSubmit, formatDateTime };
+            }
+        };
+
+        // ========== 反馈管理组件 ==========
+        const Feedback = {
+            template: `
+                <div class="container">
+                    <h2 class="page-title">反馈管理</h2>
+                    <el-button type="primary" @click="showAddDialog">新增反馈</el-button>
+                    <el-table :data="feedbacks" style="width: 100%" v-loading="loading">
+                        <el-table-column prop="id" label="ID" width="80" />
+                        <el-table-column prop="orderId" label="订单号" width="150" />
+                        <el-table-column prop="userId" label="用户ID" width="100" />
+                        <el-table-column prop="feedbackType" label="类型" width="100">
+                            <template #default="scope">
+                                <el-tag :type="getFeedbackTypeTag(scope.row.feedbackType)">
+                                    {{ getFeedbackTypeText(scope.row.feedbackType) }}
+                                </el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="rating" label="评分" width="120">
+                            <template #default="scope">
+                                <el-rate v-model="scope.row.rating" disabled show-score text-color="#ff9900" />
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="content" label="内容" width="300" />
+                        <el-table-column prop="solution" label="处理方案" width="200" />
+                        <el-table-column prop="createdAt" label="创建时间" width="180">
+                            <template #default="scope">
+                                {{ formatDateTime(scope.row.createdAt) }}
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="操作" width="150" fixed="right">
+                            <template #default="scope">
+                                <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
+                                <el-button size="small" type="danger" @click="handleDelete(scope.row)">删除</el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+
+                    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑反馈' : '新增反馈'" width="600px">
+                        <el-form :model="form" label-width="100px">
+                            <el-form-item label="订单号">
+                                <el-input v-model="form.orderId" placeholder="如：ORD-001" />
+                            </el-form-item>
+                            <el-form-item label="用户ID">
+                                <el-input-number v-model="form.userId" :min="1" />
+                            </el-form-item>
+                            <el-form-item label="类型">
+                                <el-select v-model="form.feedbackType" placeholder="请选择">
+                                    <el-option label="产品建议" :value="1" />
+                                    <el-option label="服务反馈" :value="2" />
+                                    <el-option label="投诉" :value="3" />
+                                    <el-option label="其他" :value="4" />
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item label="评分">
+                                <el-rate v-model="form.rating" show-score text-color="#ff9900" />
+                            </el-form-item>
+                            <el-form-item label="内容">
+                                <el-input v-model="form.content" type="textarea" :rows="3" />
+                            </el-form-item>
+                            <el-form-item label="处理方案">
+                                <el-input v-model="form.solution" type="textarea" :rows="2" />
+                            </el-form-item>
+                        </el-form>
+                        <template #footer>
+                            <el-button @click="dialogVisible = false">取消</el-button>
+                            <el-button type="primary" @click="handleSubmit">确定</el-button>
+                        </template>
+                    </el-dialog>
+                </div>
+            `,
+            setup() {
+                const feedbacks = ref([]);
+                const loading = ref(false);
+                const dialogVisible = ref(false);
+                const isEdit = ref(false);
+                const form = ref({});
+
+                const fetchFeedbacks = async () => {
+                    loading.value = true;
+                    try {
+                        const data = await request('/feedback');
+                        feedbacks.value = data;
+                    } catch (error) {
+                        ElementPlus.ElMessage.error('获取反馈列表失败');
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const formatDateTime = (dateStr) => {
+                    if (!dateStr) return '';
+                    return new Date(dateStr).toLocaleString('zh-CN');
+                };
+
+                const getFeedbackTypeText = (type) => {
+                    const map = {
+                        1: '产品建议',
+                        2: '服务反馈',
+                        3: '投诉',
+                        4: '其他'
+                    };
+                    return map[type] || '未知';
+                };
+
+                const getFeedbackTypeTag = (type) => {
+                    const map = {
+                        1: 'success',
+                        2: 'primary',
+                        3: 'danger',
+                        4: 'info'
+                    };
+                    return map[type] || 'info';
+                };
+
+                const showAddDialog = () => {
+                    isEdit.value = false;
+                    form.value = { feedbackType: 1, rating: 5 };
+                    dialogVisible.value = true;
+                };
+
+                const handleEdit = (row) => {
+                    isEdit.value = true;
+                    form.value = { ...row };
+                    dialogVisible.value = true;
+                };
+
+                const handleDelete = async (row) => {
+                    try {
+                        await ElementPlus.ElMessageBox.confirm('确定要删除该反馈吗？', '提示', {
+                            type: 'warning'
+                        });
+                        await request(`/feedback/${row.id}`, { method: 'DELETE' });
+                        ElementPlus.ElMessage.success('删除成功');
+                        fetchFeedbacks();
+                    } catch (error) {
+                        if (error !== 'cancel') {
+                            ElementPlus.ElMessage.error('删除失败');
+                        }
+                    }
+                };
+
+                const handleSubmit = async () => {
+                    try {
+                        if (isEdit.value) {
+                            await request(`/feedback/${form.value.id}`, {
+                                method: 'PUT',
+                                body: form.value
+                            });
+                        } else {
+                            await request('/feedback', {
+                                method: 'POST',
+                                body: form.value
+                            });
+                        }
+                        ElementPlus.ElMessage.success(isEdit.value ? '更新成功' : '新增成功');
+                        dialogVisible.value = false;
+                        fetchFeedbacks();
+                    } catch (error) {
+                        ElementPlus.ElMessage.error(isEdit.value ? '更新失败' : '新增失败');
+                    }
+                };
+
+                onMounted(() => {
+                    fetchFeedbacks();
+                });
+
+                return { feedbacks, loading, dialogVisible, isEdit, form, showAddDialog, handleEdit, handleDelete, handleSubmit, formatDateTime, getFeedbackTypeText, getFeedbackTypeTag };
+            }
+        };
+
+        // ========== 主应用组件 ==========
+        const App = {
+            template: `
+                <el-container style="height: 100vh">
+                    <el-header style="background-color: #545c64; display: flex; align-items: center;">
+                        <h2 style="color: white; margin: 0;">咖啡店管理系统</h2>
+                        <div style="margin-left: auto;">
+                            <el-menu
+                                mode="horizontal"
+                                :default-active="$route.path"
+                                router
+                                background-color="#545c64"
+                                text-color="#fff"
+                                active-text-color="#ffd04b">
+                                <el-menu-item index="/users">用户管理</el-menu-item>
+                                <el-menu-item index="/products">产品管理</el-menu-item>
+                                <el-menu-item index="/orders">订单管理</el-menu-item>
+                                <el-menu-item index="/feedback">反馈管理</el-menu-item>
+                            </el-menu>
+                        </div>
+                    </el-header>
+                    <el-main>
+                        <router-view />
+                    </el-main>
+                </el-container>
+            `
+        };
+
+        // ========== 创建路由 ==========
+        const router = createRouter({
+            history: createWebHistory(),
+            routes: [
+                { path: '/', redirect: '/users' },
+                { path: '/users', component: Users },
+                { path: '/products', component: Products },
+                { path: '/orders', component: Orders },
+                { path: '/feedback', component: Feedback }
+            ]
+        });
+
+        // ========== 创建应用 ==========
+        const app = createApp(App);
+        app.use(router);
+        app.use(ElementPlus);
+        app.mount('#app');
+    </script>
+</body>
+</html>

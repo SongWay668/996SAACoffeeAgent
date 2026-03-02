@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.ProductMapper">
+
+    <resultMap id="ProductResultMap" type="com.example.entity.Product">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="description" column="description"/>
+        <result property="price" column="price"/>
+        <result property="stock" column="stock"/>
+        <result property="shelfTime" column="shelf_time"/>
+        <result property="preparationTime" column="preparation_time"/>
+        <result property="isSeasonal" column="is_seasonal"/>
+        <result property="seasonStart" column="season_start"/>
+        <result property="seasonEnd" column="season_end"/>
+        <result property="isRegional" column="is_regional"/>
+        <result property="availableRegions" column="available_regions"/>
+        <result property="status" column="status"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="ProductResultMap">
+        SELECT * FROM product WHERE id = #{id}
+    </select>
+
+    <select id="selectAll" resultMap="ProductResultMap">
+        SELECT * FROM product ORDER BY created_at DESC
+    </select>
+
+    <select id="selectByStatus" resultMap="ProductResultMap">
+        SELECT * FROM product WHERE status = #{status} ORDER BY id
+    </select>
+
+    <select id="selectByName" resultMap="ProductResultMap">
+        SELECT * FROM product WHERE name = #{name} AND status = 1 LIMIT 1
+    </select>
+
+    <select id="selectByNameAndStatus" resultMap="ProductResultMap">
+        SELECT * FROM product WHERE name = #{name}
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        LIMIT 1
+    </select>
+
+    <select id="searchByName" resultMap="ProductResultMap">
+        SELECT * FROM product WHERE name LIKE CONCAT('%', #{keyword}, '%') AND status = 1 ORDER BY id
+    </select>
+
+    <select id="getPriceByName" resultType="java.math.BigDecimal">
+        SELECT price FROM product WHERE name = #{name} AND status = 1 LIMIT 1
+    </select>
+
+    <select id="checkStock" resultType="boolean">
+        SELECT stock >= #{quantity} FROM product WHERE name = #{name} AND status = 1 LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="com.example.entity.Product" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO product (name, description, price, stock, shelf_time, preparation_time, is_seasonal, season_start, season_end, is_regional, available_regions, status, created_at, updated_at)
+        VALUES (#{name}, #{description}, #{price}, #{stock}, #{shelfTime}, #{preparationTime}, #{isSeasonal}, #{seasonStart}, #{seasonEnd}, #{isRegional}, #{availableRegions}, #{status}, NOW(), NOW())
+    </insert>
+
+    <update id="update" parameterType="com.example.entity.Product">
+        UPDATE product
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="stock != null">stock = #{stock},</if>
+            <if test="shelfTime != null">shelf_time = #{shelfTime},</if>
+            <if test="preparationTime != null">preparation_time = #{preparationTime},</if>
+            <if test="isSeasonal != null">is_seasonal = #{isSeasonal},</if>
+            <if test="seasonStart != null">season_start = #{seasonStart},</if>
+            <if test="seasonEnd != null">season_end = #{seasonEnd},</if>
+            <if test="isRegional != null">is_regional = #{isRegional},</if>
+            <if test="availableRegions != null">available_regions = #{availableRegions},</if>
+            <if test="status != null">status = #{status},</if>
+            updated_at = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM product WHERE id = #{id}
+    </delete>
+
+</mapper>

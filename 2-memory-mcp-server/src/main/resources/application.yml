@@ -1,0 +1,38 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: memory-mcp-server
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - com.alibaba.druid.spring.boot3.autoconfigure.DruidDataSourceAutoConfigure
+  ai:
+    mcp:
+      server:
+        protocol: STREAMABLE
+        #        protocol: SSE
+        name: memory-mcp-server
+        version: 1.0.0
+        type: SYNC
+        instructions: "This streamable server provides real-time notifications"
+        resource-change-notification: true
+        tool-change-notification: true
+        prompt-change-notification: true
+        streamable-http:
+          endpoint: /mcp  # 默认就是 /mcp
+          keep-alive-interval: 30s
+
+# Mem0 API 配置
+mem0:
+  api:
+    url: ${MEM0_ADDRESS:http://localhost:8765}
+    key: ${MEM0_API_KEY:admin}
+  client:
+    timeout-seconds: 300
+    max-retry-attempts: 3
+logging:
+  level:
+    io.modelcontextprotocol.util.KeepAliveScheduler: error

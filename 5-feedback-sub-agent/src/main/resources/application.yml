@@ -1,0 +1,53 @@
+server:
+  port: 8084  # 独立运行时的端口
+spring:
+  application:
+    name: feedback-agent
+  ai:
+    dashscope:
+#      base-url: https://dashscope.aliyuncs.com/compatible-mode/
+      api-key: ${API-KEY}
+      chat:
+        options:
+          model: qwen-plus
+    mcp:
+      client:
+        enabled: true  # 是否启用MCP
+        name: feedback-agent-mcp-client # MCP 客户端名称
+        version: 1.0.0
+        request-timeout: 30s
+        type: SYNC #和server一致
+        streamable-http:
+          connections:
+            server1:
+              url: http://localhost:8080
+              endpoint: /mcp #和server一致
+              headers:
+                Authorization: "Bearer mcp-secure-token-change-me-in-production"
+            server2:
+              url: http://localhost:8081
+              endpoint: /mcp #和server一致
+              headers:
+                Authorization: "Bearer mcp-secure-token-change-me-in-production"
+        toolcallback:
+          enabled: true #工具调用结果会被回调处理 （可能过滤、格式化）
+
+# 日志配置
+logging:
+  level:
+    root: info
+    com.example: debug
+    org.springframework.ai.chat.client.advisor: error
+    # 降低 MCP keep-alive 警告级别，这是 Streamable 协议的正常行为
+    io.modelcontextprotocol: error
+    # 降低 KeepAliveScheduler 的日志级别
+    io.modelcontextprotocol.client.KeepAliveScheduler: error
+
+  file:
+    name: logs/feedback-agent.log
+    max-size: 100MB
+    max-history: 30
+    total-size-cap: 1GB
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

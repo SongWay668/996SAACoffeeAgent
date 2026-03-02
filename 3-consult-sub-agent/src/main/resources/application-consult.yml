@@ -1,0 +1,179 @@
+server:
+#  port: 8082  # 独立运行时的端口
+spring:
+  application:
+    name: consult-agent
+  ai:
+    dashscope:
+#      base-url: https://dashscope.aliyuncs.com/compatible-mode/
+      api-key: ${API-KEY}
+      chat:
+        options:
+          model: qwen-plus
+      embedding:
+        options:
+          model: text-embedding-v3
+          dimensions: 1024
+      rerank:
+        options:
+          model: gte-rerank-v2
+          top-n: 5
+#    dashscope:
+#      api-key: ${DASHSCOPE_API_KEY:-}
+#      # 文档检索配置
+#      document-retrieval:
+#        index-id: ${DASHSCOPE_INDEX_ID:-}
+#        enable-reranking: ${DASHSCOPE_ENABLE_RERANKING:true}
+#        rerank-top-n: ${DASHSCOPE_RERANK_TOP_N:2}
+#        rerank-min-score: ${DASHSCOPE_RERANK_MIN_SCORE:0}
+    vectorstore:
+      #      chroma:
+      #        client:
+      #          index: spring_ai_index #向量库索引名
+      #          initialize-schema: true #是否自动创建集合，不存在?创建:跳过创建
+      #          host: http://localhost
+      #          port: 8000
+      #          prefix: "doc" #向量key前缀
+      #          collection-name: SpringAiCollection #类似于数据库中的"表"概念
+      opensearch:
+        uris: http://localhost:9200
+        username: admin
+        password: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+        initialize-schema: true
+        similarity-function: cosinesimil
+        similarity-threshold: 0.1
+        index-name: coffeeshop
+        dimensions: 1024
+    mcp:
+      client:
+        enabled: true  # 是否启用MCP
+        name: consult-agent-mcp-client # MCP 客户端名称
+        version: 1.0.0
+        request-timeout: 30s
+        type: SYNC #和server一致
+        streamable-http:
+          connections:
+            server1:
+              url: http://localhost:8080
+              endpoint: /mcp #和server一致
+              headers:
+                Authorization: "Bearer mcp-secure-token-change-me-in-production"
+            server2:
+              url: http://localhost:8081
+              endpoint: /mcp #和server一致
+              headers:
+                Authorization: "Bearer mcp-secure-token-change-me-in-production"
+        toolcallback:
+          enabled: true #工具调用结果会被回调处理 （可能过滤、格式化）
+  # 数据源配置
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/coffee_shop?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: ${DBKEY}
+
+    # Druid 配置
+    druid:
+      # 初始连接数
+      initial-size: 5
+      # 最小空闲连接数
+      min-idle: 5
+      # 最大活跃连接数
+      max-active: 20
+      # 获取连接最大等待时间（毫秒）
+      max-wait: 60000
+      # 配置间隔多久进行一次检测，检测需要关闭的空闲连接（毫秒）
+      time-between-eviction-runs-millis: 60000
+      # 配置一个连接在池中最小生存的时间（毫秒）
+      min-evictable-idle-time-millis: 300000
+      # 验证连接有效性的SQL
+      validation-query: SELECT 1
+      # 申请连接时执行validationQuery检测连接是否有效
+      test-while-idle: true
+      # 申请连接时执行validationQuery检测连接是否有效
+      test-on-borrow: false
+      # 归还连接时执行validationQuery检测连接是否有效
+      test-on-return: false
+      # 是否缓存preparedStatement，也就是PSCache
+      pool-prepared-statements: true
+      # 配置监控统计拦截的filters
+      filters: stat,wall,slf4j
+      # 通过connectProperties属性来打开mergeSql功能；慢SQL记录
+      connection-properties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=5000
+      # Druid 监控配置
+      stat-view-servlet:
+        enabled: true
+        url-pattern: /druid/*
+        reset-enable: false
+        login-username: admin
+        login-password: admin
+      web-stat-filter:
+        enabled: true
+        url-pattern: /*
+        exclusions: "*.js,*.gif,*.jpg,*.bmp,*.png,*.css,*.ico,/druid/*"
+
+  # Redis 配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      database: 0
+      timeout: 3000
+      lettuce:
+        pool:
+          # 连接池最大连接数
+          max-active: 8
+          # 连接池最大阻塞等待时间（毫秒）
+          max-wait: -1
+          # 连接池中的最大空闲连接
+          max-idle: 8
+          # 连接池中的最小空闲连接
+          min-idle: 0
+
+# Chat Memory 配置
+chat:
+  memory:
+    prefix: "customerchat:"
+
+# MyBatis 配置
+mybatis:
+  # Mapper XML 文件位置
+  mapper-locations: classpath:mapper/*.xml
+  # 实体类别名包路径
+  type-aliases-package: com.example.entity
+  configuration:
+    # 开启驼峰命名自动映射
+    map-underscore-to-camel-case: true
+    # 开启二级缓存
+    cache-enabled: true
+    # 延迟加载
+    lazy-loading-enabled: true
+    # 按需加载
+    aggressive-lazy-loading: false
+
+# 日志配置
+logging:
+  level:
+    root: info
+    com.example: debug
+    org.mybatis: debug
+    org.springframework.ai.chat.client.advisor: error
+    org.springframework.ai.chat.client.advisor.vectorstore: error
+    org.springframework.ai.rag: error
+    org.springframework.ai.vectorstore: error
+    org.springframework.ai.vectorstore.opensearch: error
+    org.springframework.ai.openai: error
+    # 降低 MCP keep-alive 警告级别，这是 Streamable 协议的正常行为
+    io.modelcontextprotocol: error
+    # 降低 KeepAliveScheduler 的日志级别
+    io.modelcontextprotocol.client.KeepAliveScheduler: error
+  file:
+    name: logs/consult-agent.log
+    max-size: 100MB
+    max-history: 30
+    total-size-cap: 1GB
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
