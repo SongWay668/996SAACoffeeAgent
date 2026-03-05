@@ -223,7 +223,7 @@ spring:
 
 每个子Agent有两种配置文件：
 
-- `application-xxx.yml`: 通用配置（supervisor模式和独立模式共用）
+- `application-xxx.yml`: supervisor模式配置
 - `application.yml`: 独立模式专用（包含端口配置）
 - 
 ### MCP工具过滤
@@ -289,7 +289,6 @@ mem0 下载及配置参考
 https://docs.mem0.ai/open-source/overview
 
 推荐使用Nacos实现A2A 模式
-https://github.com/spring-ai-alibaba/spring-ai-alibaba-multi-agent-demo
 
 数据操作相关代码仅供演示，未做完整性保证(如下单并不会减少库存)
 
