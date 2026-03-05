@@ -9,6 +9,7 @@
 反馈与投诉处理。处理用户反馈, 对于投诉或差评安抚情绪并出解决方案, 同时分析并记录用户习惯和喜好。
 
 源自阿里multiple agent demo https://github.com/spring-ai-alibaba/spring-ai-alibaba-multi-agent-demo
+
 差异:
 1. Agent本地化，未使用Nacos[推荐使用Nacos自动注册/发现]
 2. 通信模式由SSE改为streamable-http[SSE已被SpringAI弃用]
