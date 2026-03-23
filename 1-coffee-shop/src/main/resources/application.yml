@@ -4,10 +4,6 @@ server:
 spring:
   application:
     name: coffee-shop
-  security:
-    user:
-      name: admin
-      password: admin123
   ai:
     mcp:
       server:
@@ -74,3 +70,14 @@ mcp:
   security:
     enabled: false
     token: 93561  # 生产环境请修改此 Token
+
+# Session 登录配置（当前已禁用）
+auth:
+  session:
+    enabled: false
+
+# JWT 登录配置
+jwt:
+  enabled: true
+  secret: ${JWT_SECRET:}  # 通过环境变量设置密钥，不要硬编码！
+  expiration: ${JWT_EXPIRATION:3600000}  # Token 过期时间（毫秒），默认 1 小时

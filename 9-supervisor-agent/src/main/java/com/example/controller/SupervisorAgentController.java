@@ -73,6 +73,10 @@ public class SupervisorAgentController {
             input.put("conversation_id", chat_id);
 
             logger.info("调用 supervisorAgent.stream() - requestId: {}", requestId);
+
+            // 用于累积已输出的内容，检测重复
+            final StringBuilder accumulatedContent = new StringBuilder();
+
             return supervisorAgent.stream(input)
                     .doOnNext(output -> {
                         logger.info("supervisorAgent 输出 - node: '{}', type: {}, class: {}",
@@ -81,8 +85,8 @@ public class SupervisorAgentController {
                             StreamingOutput streamingOutput = (StreamingOutput) output;
                             String chunk = streamingOutput.chunk();
                             if (chunk != null && !chunk.trim().isEmpty()) {
-                                logger.info("流式输出片段 - requestId: {}, chunk: {}",
-                                        requestId, chunk.length() > 100 ? chunk.substring(0, 100) + "..." : chunk);
+                                logger.info("流式输出片段 - requestId: {}, node: {}, chunk: {}",
+                                        requestId, output.node(), chunk.length() > 100 ? chunk.substring(0, 100) + "..." : chunk);
                             }
                         }
                     })
@@ -94,7 +98,31 @@ public class SupervisorAgentController {
                     })
                     .filter(chunk -> !chunk.trim().isEmpty())
                     .filter(chunk -> !chunk.equals("Agent State: submitted"))
-                    .doOnComplete(() -> logger.info("流式响应完成 - requestId: {}, chat_id: {}", requestId, chat_id))
+                    .filter(chunk -> {
+                        // 检测并过滤重复：如果 chunk 完全包含之前累积的所有内容，则是重复
+                        synchronized (accumulatedContent) {
+                            if (accumulatedContent.length() > 0 &&
+                                chunk.contains(accumulatedContent.toString()) &&
+                                chunk.length() > accumulatedContent.length() * 2) {
+                                // chunk 包含之前所有内容且长度显著更长，很可能是完整重复
+                                logger.warn("检测到重复输出，已过滤 - requestId: {}, accumulated length: {}, chunk length: {}",
+                                        requestId, accumulatedContent.length(), chunk.length());
+                                return false;
+                            }
+                            // 只累积增量内容（chunk 中不包含之前内容的部分）
+                            if (accumulatedContent.length() > 0 && chunk.contains(accumulatedContent.toString())) {
+                                String increment = chunk.substring(accumulatedContent.length());
+                                if (!increment.trim().isEmpty()) {
+                                    accumulatedContent.append(increment);
+                                }
+                            } else {
+                                accumulatedContent.append(chunk);
+                            }
+                        }
+                        return true;
+                    })
+                    .doOnComplete(() -> logger.info("流式响应完成 - requestId: {}, chat_id: {}, total length: {}",
+                            requestId, chat_id, accumulatedContent.length()))
                     .doOnError(e -> {
                         logger.error("流式输出错误 - requestId: {}, chat_id: {}, error: {}", requestId, chat_id, e.getClass().getName());
                         logger.error("错误详情 - message: {}", e.getMessage());

@@ -47,12 +47,12 @@ public class UserController {
         return Result.error("更新失败");
     }
 
-    @DeleteMapping("/{id}")
-    public Result<String> delete(@PathVariable Long id) {
-        int result = userService.delete(id);
-        if (result > 0) {
-            return Result.success("删除成功");
-        }
-        return Result.error("删除失败");
-    }
+//    @DeleteMapping("/{id}")
+//    public Result<String> delete(@PathVariable Long id) {
+//        int result = userService.delete(id);
+//        if (result > 0) {
+//            return Result.success("删除成功");
+//        }
+//        return Result.error("删除失败");
+//    }
 }

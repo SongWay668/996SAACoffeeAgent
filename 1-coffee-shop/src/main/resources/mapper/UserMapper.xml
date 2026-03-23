@@ -18,7 +18,19 @@
         SELECT * FROM user WHERE id = #{id}
     </select>
 
+    <select id="getById" resultMap="UserResultMap">
+        SELECT * FROM user WHERE id = #{id}
+    </select>
+
+    <select id="getByUsername" resultMap="UserResultMap">
+        SELECT * FROM user WHERE username = #{username}
+    </select>
+
     <select id="selectAll" resultMap="UserResultMap">
+        SELECT * FROM user ORDER BY created_at DESC
+    </select>
+
+    <select id="getAll" resultMap="UserResultMap">
         SELECT * FROM user ORDER BY created_at DESC
     </select>
 

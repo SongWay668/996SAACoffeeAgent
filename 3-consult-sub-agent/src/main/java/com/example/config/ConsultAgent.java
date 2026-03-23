@@ -1,7 +1,10 @@
 package com.example.config;
 
 import com.alibaba.cloud.ai.graph.agent.ReactAgent;
+import com.alibaba.cloud.ai.graph.agent.hook.skills.SkillsAgentHook;
 import com.alibaba.cloud.ai.graph.exception.GraphStateException;
+import com.alibaba.cloud.ai.graph.skills.registry.SkillRegistry;
+import com.alibaba.cloud.ai.graph.skills.registry.classpath.ClasspathSkillRegistry;
 import com.example.service.AnswerValidationInterceptor;
 import com.example.service.QueryEnhancementHook;
 import com.example.tool.ConsultTools;
@@ -57,9 +60,24 @@ public class ConsultAgent {
         // 打印本地工具名称
         log.info("consult_agent 本地工具名称: consult-search-knowledge");
 
+        // ========== Skills 配置 ==========
+        // 创建 Skills Registry - 从 classpath 加载技能
+        SkillRegistry skillRegistry = ClasspathSkillRegistry.builder()
+                .classpathPath("skills")
+                .build();
+
+        // 创建 Skills Agent Hook
+        // SkillsAgentHook 会自动注册 read_skill 工具，并在系统提示中注入技能列表
+        SkillsAgentHook skillsHook = SkillsAgentHook.builder()
+                .skillRegistry(skillRegistry)
+                .build();
+
+        log.info("Consult Agent 已启用 Skills 支持，技能目录: classpath:skills");
+        log.info("可用技能数量: {}", skillRegistry.size());
+
         var reactAgent = ReactAgent.builder()
                 .name("consult_agent")  // Agent 名称，用于多 Agent 协作时引用
-                .description("咖啡店咨询助手，专门处理咖啡产品推荐、价格查询、口味咨询等客户问题")  // Agent 描述，用于 LLM 路由
+                .description("咖啡店咨询助手，专门处理咖啡产品推荐、价格查询、口味咨询、活动规则、促销信息等客户问题")  // Agent 描述，用于 LLM 路由
                 .model(chatModel)
                 .instruction(customerResource.getContentAsString(StandardCharsets.UTF_8));
 
@@ -70,6 +88,11 @@ public class ConsultAgent {
         if(!McpTools.isEmpty()){
             reactAgent.tools(McpTools);
         }
+
+        // ========== 添加 Skills Hook ==========
+        // SkillsAgentHook 提供 read_skill 工具，并注入技能列表到系统提示
+        reactAgent.hooks(skillsHook);
+
 //                .hooks(new QueryEnhancementHook(chatModel))
 //                .interceptors(new AnswerValidationInterceptor());
 

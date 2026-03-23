@@ -24,13 +24,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 import com.example.config.Mem0Config;
 
 import java.time.LocalDate;
@@ -43,14 +40,14 @@ public class MemoryService {
     private static final String MEMORIES_URI_V1 = "/memories";
     private static final String MEMORIES_URI_V2 = "/search";
 
-    private final RestTemplate restTemplate;
+    private final WebClient webClient;
     private final ObjectMapper objectMapper;
     private final Mem0Config config;
     private final ApplicationContext applicationContext;
 
     @Autowired
-    public MemoryService(RestTemplate restTemplate, Mem0Config config, ApplicationContext applicationContext) {
-        this.restTemplate = restTemplate;
+    public MemoryService(WebClient webClient, Mem0Config config, ApplicationContext applicationContext) {
+        this.webClient = webClient;
         this.objectMapper = new ObjectMapper();
         this.config = config;
         this.applicationContext = applicationContext;
@@ -66,21 +63,18 @@ public class MemoryService {
             String requestJson = objectMapper.writeValueAsString(requestBody);
             logger.info("Sending memory search request: {}", requestJson);
 
-            // 使用 RestTemplate 进行同步调用，避免在 reactive 上下文中使用 block()
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            // 本地 server 不需要 Token 认证
-            // 直接传递 requestBody 对象，而不是 requestJson 字符串
-            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
-
+            // 使用 WebClient 发送 HTTP 请求
             String url = config.getApi().getUrl() + MEMORIES_URI_V2;
             logger.info("Request URL: {}", url);
-            logger.info("Request headers: {}", headers);
 
-            ResponseEntity<String> responseEntity = restTemplate.postForEntity(url, requestEntity, String.class);
-            String response = responseEntity.getBody();
+            String response = webClient.post()
+                .uri(url)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
 
-            logger.info("Response status: {}", responseEntity.getStatusCode());
             logger.info("Response body: {}", response);
 
             // 解析响应 - 本地 server 返回的是数组格式
@@ -162,23 +156,19 @@ public class MemoryService {
             String requestJson = objectMapper.writeValueAsString(requestBody);
             logger.info("Sending async memory request: {}", requestJson);
 
-            // 使用 RestTemplate 进行同步调用，避免在异步方法中使用阻塞操作
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            // 本地 server 不需要 Token 认证
-            // 直接传递 requestBody 对象，而不是 requestJson 字符串
-            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
-
+            // 使用 WebClient 发送 HTTP 请求
+            // 虽然使用了 block()，但由于在 @Async 方法中执行，不会阻塞主线程
             String url = config.getApi().getUrl() + MEMORIES_URI_V1;
             logger.info("Request URL: {}", url);
-            logger.info("Request headers: {}", headers);
 
-            ResponseEntity<String> responseEntity = restTemplate.postForEntity(url, requestEntity, String.class);
-            String response = responseEntity.getBody();
+            String response = webClient.post()
+                .uri(url)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
 
-            logger.info("Response status code: {}", responseEntity.getStatusCodeValue());
-            logger.info("Response status: {}", responseEntity.getStatusCode());
-            logger.info("Response headers: {}", responseEntity.getHeaders());
             logger.info("Response body: {}", response);
 
             if (response != null) {

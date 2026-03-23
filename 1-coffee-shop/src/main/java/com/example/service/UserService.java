@@ -1,34 +1,19 @@
 package com.example.service;
 
 import com.example.entity.User;
-import com.example.mapper.UserMapper;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+
 import java.util.List;
 
-@Service
-public class UserService {
+public interface UserService {
+    User getById(Long id);
 
-    @Autowired
-    private UserMapper userMapper;
+    User getByUsername(String username);
 
-    public User getById(Long id) {
-        return userMapper.selectById(id);
-    }
+    List<User> getAll();
 
-    public List<User> getAll() {
-        return userMapper.selectAll();
-    }
+    int create(User user);
 
-    public int create(User user) {
-        return userMapper.insert(user);
-    }
+    int update(User user);
 
-    public int update(User user) {
-        return userMapper.update(user);
-    }
-
-    public int delete(Long id) {
-        return userMapper.deleteById(id);
-    }
+//    int delete(Long id);
 }

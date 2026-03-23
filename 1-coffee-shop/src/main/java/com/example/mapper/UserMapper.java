@@ -12,4 +12,8 @@ public interface UserMapper {
     int insert(User user);
     int update(User user);
     int deleteById(@Param("id") Long id);
+
+    User getById(@Param("id") Long id);
+    User getByUsername(@Param("username") String username);
+    List<User> getAll();
 }
