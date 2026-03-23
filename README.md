@@ -8,31 +8,49 @@
 点单与订单查询。根据用户需求下订单、修改订单和查询订单, 同时分析并记录用户习惯和喜好。
 反馈与投诉处理。处理用户反馈, 对于投诉或差评安抚情绪并出解决方案, 同时分析并记录用户习惯和喜好。
 
+源自阿里multiple agent demo https://github.com/spring-ai-alibaba/spring-ai-alibaba-multi-agent-demo
+
+差异:
+1. Agent本地化，未使用Nacos[推荐使用Nacos自动注册/发现]
+2. 通信模式由SSE改为streamable-http[SSE已被SpringAI弃用]
+3. 增加短期对话记忆 Redis
+4. 用户习惯和喜好记忆本地化 mem0+OpenSearch
+5. RAG本地化[文档向量化存储可参考DocumentUploadService+splitter实现 https://github.com/SongWay668/SpringAI-Workarea  ]
+6. Admin暂未实现
+7. 统计功能正在开发中[使用Skill]
+
 ## 系统架构
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Supervisor Agent (调度中心)                │
-│                  端口: 10008 | LlmRoutingAgent               │
+│                 Supervisor Agent (调度中心)                 │
+│                   端口: 10008                               │
+│                   LlmRoutingAgent                            │
 └────────────┬──────────────────────────────────┬─────────────┘
-             │                                  │
-    ┌────────▼─────────┐        ┌──────────────▼─────────────┐
-    │  Consult Agent   │        │       Order Agent          │
-    │  咨询助手         │        │       订单助手              │
-    │  端口: 8082       │        │       端口: 8083           │
-    └──────────────────┘        └──────────────┬─────────────┘
-                                            │
-                                 ┌──────────▼───────────┐
-                                 │   Feedback Agent     │
-                                 │    反馈助手          │
-                                 │    端口: 8084        │
-                                 └──────────────────────┘
-             │                                  │
-    ┌────────▼─────────┐        ┌──────────────▼─────────────┐
-    │ Coffee Shop MCP  │        │    Memory MCP Server       │
-    │ Server (8080)    │        │       (8081)               │
-    │ 产品/订单查询     │        │    用户偏好记忆             │
-    └──────────────────┘        └────────────────────────────┘
+             │
+             │ 调度三个平级子智能体
+             │
+    ┌────────┼────────┬────────┬────────┬
+    │        │        │        │        │
+    ▼        ▼        ▼        ▼        ▼ 
+┌───────────┐  ┌──────────┐  ┌──────────────┐
+│  Consult  │  │  Order   │  │   Feedback   │
+│   Agent   │  │  Agent   │  │    Agent     │
+│ 咨询子智能体│  │订单子智能体│  │  反馈子智能体  │
+│ 端口:8082 │  │端口:8083 │  │   端口:8084  │
+└─────┬─────┘  └─────┬────┘  └──────┬───────┘
+      │             │              │
+      └─────────────┼──────────────┘
+                    │
+        ┌───────────┼───────────┐
+        │           │           │
+        ▼           ▼           ▼
+┌───────────────┐  ┌───────────────────┐
+│ Coffee Shop   │  │  Memory MCP       │
+│ MCP Server    │  │  Server           │
+│ 端口: 8080    │  │  端口: 8081       │
+│ 产品/订单查询  │  │  用户偏好记忆      │
+└───────────────┘  └───────────────────┘
 ```
 
 ## 模块说明
@@ -41,7 +59,7 @@
 |------|------|----------|
 | **9-supervisor-agent** | 10008 | 调度中心，根据用户问题路由到对应的子Agent |
 | **1-coffee-shop** | 8080 | MCP Server，提供产品和订单相关工具 |
-| **2-memory-mcp-server** | 8081 | MCP Server，提供用户偏好记忆工具（基于OpenSearch） |
+| **2-memory-mcp-server** | 8081 | MCP Server，提供用户偏好记忆工具（基于mem0+OpenSearch） |
 | **3-consult-sub-agent** | 8082 | 产品咨询、个性化推荐、智能问答 |
 | **4-order-sub-agent** | 8083 | 订单查询、下单、订单状态跟踪 |
 | **5-feedback-sub-agent** | 8084 | 用户反馈收集、满意度分析、情绪管理 |
@@ -205,7 +223,7 @@ spring:
 
 每个子Agent有两种配置文件：
 
-- `application-xxx.yml`: 通用配置（supervisor模式和独立模式共用）
+- `application-xxx.yml`: supervisor模式配置
 - `application.yml`: 独立模式专用（包含端口配置）
 - 
 ### MCP工具过滤
@@ -267,11 +285,10 @@ if (toolName.startsWith("consult") || toolName.startsWith("memory")) {
 
 需要在Opeansearch里提前创建index：coffeeshop，并上传.\3-consult-sub-agent\src\main\resources\knowledge里的文件
 
-mem0 配置参考 
+mem0 下载及配置参考 
 https://docs.mem0.ai/open-source/overview
 
 推荐使用Nacos实现A2A 模式
-https://github.com/spring-ai-alibaba/spring-ai-alibaba-multi-agent-demo
 
 数据操作相关代码仅供演示，未做完整性保证(如下单并不会减少库存)
 
